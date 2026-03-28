@@ -26,6 +26,12 @@ docker-compose up -d
 mvn spring-boot:run
 ```
 
+## Swagger UI
+
+Available at: http://localhost:8080/swagger-ui.html
+
+OpenAPI JSON: http://localhost:8080/v3/api-docs
+
 ## API Endpoints
 
 | Method | Endpoint | Description |
