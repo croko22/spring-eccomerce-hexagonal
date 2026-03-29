@@ -280,9 +280,9 @@ class ProductServiceTest {
 ## Project Management
 
 - **Kanban Board**: [Ecommerce App Kanban](https://www.notion.so/38e2eae4512d44908b6a99c6e8644999)
-- **Current / Next Task**: Create Shopping Cart Domain (Status: To Do)
-- **Review**: 
-  - Implement User Authentication ([PR #1](https://github.com/croko22/spring-eccomerce-hexagonal/pull/1))
+- **Current / Next Task**: Create Shopping Cart Domain (Status: In Progress)
+- **Completed**: 
+  - Implement User Authentication (merged)
   - Add Global Exception Handler ([PR #2](https://github.com/croko22/spring-eccomerce-hexagonal/pull/2))
 - **Upcoming Tasks**:
   - Set up Order Processing
