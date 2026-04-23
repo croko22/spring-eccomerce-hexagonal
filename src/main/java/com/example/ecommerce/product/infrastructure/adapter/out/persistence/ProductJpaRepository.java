@@ -12,6 +12,9 @@ public interface ProductJpaRepository extends JpaRepository<ProductEntity, Long>
 
     List<ProductEntity> findByCategoryId(Long categoryId);
 
+    @Query("SELECT p FROM ProductEntity p WHERE p.lowStockThreshold > 0 AND p.stock <= p.lowStockThreshold")
+    List<ProductEntity> findLowStockProducts();
+
     @Query("SELECT p FROM ProductEntity p WHERE " +
            "(:categoryId IS NULL OR p.categoryId = :categoryId) AND " +
            "(:minPrice IS NULL OR p.price >= :minPrice) AND " +

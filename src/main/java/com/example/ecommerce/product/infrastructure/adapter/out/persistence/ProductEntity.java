@@ -22,6 +22,8 @@ public class ProductEntity {
     private String imageUrl;
     private String sku;
     private Long categoryId;
+    @Column(columnDefinition = "integer default 0")
+    private int lowStockThreshold;
 
     // Getters and Setters
     public Long getId() {
@@ -86,5 +88,13 @@ public class ProductEntity {
 
     public void setCategoryId(Long categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public int getLowStockThreshold() {
+        return lowStockThreshold;
+    }
+
+    public void setLowStockThreshold(int lowStockThreshold) {
+        this.lowStockThreshold = lowStockThreshold;
     }
 }

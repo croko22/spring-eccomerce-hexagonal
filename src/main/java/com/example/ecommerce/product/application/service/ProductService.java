@@ -6,9 +6,12 @@ import com.example.ecommerce.product.application.port.in.GetProductUseCase;
 import com.example.ecommerce.product.application.port.in.UpdateProductUseCase;
 import com.example.ecommerce.product.application.port.out.CategoryRepositoryPort;
 import com.example.ecommerce.product.application.port.out.ProductRepositoryPort;
+import com.example.ecommerce.product.application.port.out.StockHistoryPort;
 import com.example.ecommerce.product.domain.exception.CategoryNotFoundException;
 import com.example.ecommerce.product.domain.exception.ProductNotFoundException;
 import com.example.ecommerce.product.domain.model.Product;
+import com.example.ecommerce.product.domain.model.StockChangeType;
+import com.example.ecommerce.product.domain.model.StockHistory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -18,10 +21,16 @@ public class ProductService implements CreateProductUseCase, GetProductUseCase, 
 
     private final ProductRepositoryPort productRepositoryPort;
     private final CategoryRepositoryPort categoryRepositoryPort;
+    private final StockHistoryPort stockHistoryPort;
 
     public ProductService(ProductRepositoryPort productRepositoryPort, CategoryRepositoryPort categoryRepositoryPort) {
+        this(productRepositoryPort, categoryRepositoryPort, null);
+    }
+
+    public ProductService(ProductRepositoryPort productRepositoryPort, CategoryRepositoryPort categoryRepositoryPort, StockHistoryPort stockHistoryPort) {
         this.productRepositoryPort = productRepositoryPort;
         this.categoryRepositoryPort = categoryRepositoryPort;
+        this.stockHistoryPort = stockHistoryPort;
     }
 
     @Override
@@ -79,5 +88,49 @@ public class ProductService implements CreateProductUseCase, GetProductUseCase, 
 
     public List<Product> getProductsByCategory(Long categoryId) {
         return productRepositoryPort.findByCategoryId(categoryId);
+    }
+
+    public void reserveStock(Long productId, int quantity, String reference) {
+        Product product = getProductById(productId);
+        product.reserveStock(quantity);
+        productRepositoryPort.save(product);
+        if (stockHistoryPort != null) {
+            stockHistoryPort.record(productId, StockChangeType.RESERVE, quantity, product.getStock(), reference);
+        }
+    }
+
+    public void releaseStock(Long productId, int quantity, String reference) {
+        Product product = getProductById(productId);
+        product.releaseStock(quantity);
+        productRepositoryPort.save(product);
+        if (stockHistoryPort != null) {
+            stockHistoryPort.record(productId, StockChangeType.RELEASE, quantity, product.getStock(), reference);
+        }
+    }
+
+    public void decrementStock(Long productId, int quantity, String reference) {
+        Product product = getProductById(productId);
+        product.decrementStock(quantity);
+        productRepositoryPort.save(product);
+        if (stockHistoryPort != null) {
+            stockHistoryPort.record(productId, StockChangeType.DECREMENT, quantity, product.getStock(), reference);
+        }
+    }
+
+    public void adjustStock(Long productId, int quantity, String reference) {
+        Product product = getProductById(productId);
+        product.adjustStock(quantity, reference);
+        productRepositoryPort.save(product);
+        if (stockHistoryPort != null) {
+            stockHistoryPort.record(productId, StockChangeType.ADJUST, quantity, product.getStock(), reference);
+        }
+    }
+
+    public List<Product> getLowStockProducts() {
+        return productRepositoryPort.findLowStockProducts();
+    }
+
+    public Page<StockHistory> getStockHistory(Long productId, Pageable pageable) {
+        return stockHistoryPort.findByProductId(productId, pageable);
     }
 }
