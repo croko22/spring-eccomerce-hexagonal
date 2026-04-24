@@ -33,6 +33,7 @@ public class ProductPersistenceAdapter implements ProductRepositoryPort {
         entity.setImageUrl(product.getImageUrl());
         entity.setSku(product.getSku());
         entity.setCategoryId(product.getCategoryId());
+        entity.setLowStockThreshold(product.getLowStockThreshold());
         
         // Save using Spring Data JPA
         ProductEntity savedEntity = productJpaRepository.save(entity);
@@ -71,9 +72,16 @@ public class ProductPersistenceAdapter implements ProductRepositoryPort {
                 .map(this::mapToDomainModel)
                 .collect(Collectors.toList());
     }
-    
+
+    @Override
+    public List<Product> findLowStockProducts() {
+        return productJpaRepository.findLowStockProducts().stream()
+                .map(this::mapToDomainModel)
+                .collect(Collectors.toList());
+    }
+
     private Product mapToDomainModel(ProductEntity entity) {
-        return new Product(
+        Product product = new Product(
                 entity.getId(),
                 entity.getName(),
                 entity.getDescription(),
@@ -83,5 +91,7 @@ public class ProductPersistenceAdapter implements ProductRepositoryPort {
                 entity.getSku(),
                 entity.getCategoryId()
         );
+        product.setLowStockThreshold(entity.getLowStockThreshold());
+        return product;
     }
 }

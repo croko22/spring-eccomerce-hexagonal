@@ -21,4 +21,6 @@ public interface ProductRepositoryPort {
                                   Boolean inStock, String search, Pageable pageable);
 
     List<Product> findByCategoryId(Long categoryId);
+
+    List<Product> findLowStockProducts();
 }

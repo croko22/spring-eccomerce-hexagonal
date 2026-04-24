@@ -1,5 +1,6 @@
 package com.example.ecommerce.product.domain.model;
 
+import com.example.ecommerce.product.domain.exception.InsufficientStockException;
 import com.example.ecommerce.product.domain.exception.InvalidProductException;
 
 public class Product {
@@ -12,6 +13,7 @@ public class Product {
     private String imageUrl;
     private String sku;
     private Long categoryId;
+    private int lowStockThreshold;
 
     public Product(Long id, String name, String description, double price, int stock, String imageUrl, String sku, Long categoryId) {
         if (name == null || name.trim().isEmpty()) {
@@ -32,6 +34,7 @@ public class Product {
         this.imageUrl = imageUrl;
         this.sku = sku;
         this.categoryId = categoryId;
+        this.lowStockThreshold = 0;
     }
 
     // Legacy constructor for backward compatibility
@@ -107,5 +110,68 @@ public class Product {
 
     public void setCategoryId(Long categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public int getLowStockThreshold() {
+        return lowStockThreshold;
+    }
+
+    public void setLowStockThreshold(int lowStockThreshold) {
+        this.lowStockThreshold = lowStockThreshold;
+    }
+
+    // ========== Stock domain methods ==========
+
+    /**
+     * Reserves stock for an order by decrementing available quantity.
+     * @throws InsufficientStockException if requested quantity exceeds available stock
+     */
+    public void reserveStock(int quantity) {
+        if (quantity > stock) {
+            throw new InsufficientStockException(id, quantity, stock);
+        }
+        stock -= quantity;
+    }
+
+    /**
+     * Releases previously reserved stock back to available quantity.
+     */
+    public void releaseStock(int quantity) {
+        stock += quantity;
+    }
+
+    /**
+     * Permanently decrements stock (e.g., on payment confirmation).
+     * @throws InsufficientStockException if requested quantity exceeds available stock
+     */
+    public void decrementStock(int quantity) {
+        if (quantity > stock) {
+            throw new InsufficientStockException(id, quantity, stock);
+        }
+        stock -= quantity;
+    }
+
+    /**
+     * Adjusts stock by a delta amount (positive or negative).
+     * Used for admin corrections, restocking, etc.
+     * @param quantity the adjustment delta (positive increases, negative decreases)
+     * @param reason the reason for the adjustment
+     * @throws InsufficientStockException if resulting stock would be negative
+     */
+    public void adjustStock(int quantity, String reason) {
+        int newStock = stock + quantity;
+        if (newStock < 0) {
+            throw new InsufficientStockException(id, Math.abs(quantity), stock);
+        }
+        stock = newStock;
+    }
+
+    /**
+     * Checks if the product is flagged as low stock.
+     * Low stock is true when: stock <= lowStockThreshold AND lowStockThreshold > 0.
+     * A threshold of 0 means the check is disabled.
+     */
+    public boolean isLowStock() {
+        return lowStockThreshold > 0 && stock <= lowStockThreshold;
     }
 }
