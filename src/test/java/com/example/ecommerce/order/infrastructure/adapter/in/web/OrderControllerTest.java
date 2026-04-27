@@ -1,5 +1,6 @@
 package com.example.ecommerce.order.infrastructure.adapter.in.web;
 
+import com.example.ecommerce.notification.application.port.in.SendNotificationUseCase;
 import com.example.ecommerce.order.application.port.in.CreateOrderUseCase;
 import com.example.ecommerce.order.application.port.in.GetOrderUseCase;
 import com.example.ecommerce.order.application.port.in.GetUserOrdersUseCase;
@@ -10,6 +11,7 @@ import com.example.ecommerce.order.domain.model.OrderItem;
 import com.example.ecommerce.order.domain.model.OrderStatus;
 import com.example.ecommerce.order.domain.model.ShippingAddress;
 import com.example.ecommerce.product.infrastructure.adapter.in.web.GlobalExceptionHandler;
+import com.example.ecommerce.user.application.port.out.UserRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,13 +46,21 @@ class OrderControllerTest {
     @Mock
     private UpdateOrderStatusUseCase updateOrderStatusUseCase;
 
+    @Mock
+    private SendNotificationUseCase sendNotificationUseCase;
+
+    @Mock
+    private UserRepositoryPort userRepositoryPort;
+
     @BeforeEach
     void setUp() {
         OrderController orderController = new OrderController(
                 createOrderUseCase,
                 getOrderUseCase,
                 getUserOrdersUseCase,
-                updateOrderStatusUseCase
+                updateOrderStatusUseCase,
+                sendNotificationUseCase,
+                userRepositoryPort
         );
 
         mockMvc = MockMvcBuilders.standaloneSetup(orderController)
