@@ -1,11 +1,14 @@
 package com.example.ecommerce.order.infrastructure.adapter.in.web;
 
+import com.example.ecommerce.notification.application.port.in.SendNotificationUseCase;
 import com.example.ecommerce.order.application.port.in.*;
 import com.example.ecommerce.order.domain.model.Order;
 import com.example.ecommerce.order.domain.model.OrderStatus;
 import com.example.ecommerce.order.infrastructure.adapter.in.web.dto.CreateOrderRequest;
 import com.example.ecommerce.order.infrastructure.adapter.in.web.dto.OrderResponse;
 import com.example.ecommerce.order.infrastructure.adapter.in.web.dto.UpdateOrderStatusRequest;
+import com.example.ecommerce.user.application.port.out.UserRepositoryPort;
+import com.example.ecommerce.user.domain.model.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,16 +23,22 @@ public class OrderController {
     private final GetOrderUseCase getOrderUseCase;
     private final GetUserOrdersUseCase getUserOrdersUseCase;
     private final UpdateOrderStatusUseCase updateOrderStatusUseCase;
+    private final SendNotificationUseCase sendNotificationUseCase;
+    private final UserRepositoryPort userRepositoryPort;
 
     public OrderController(
             CreateOrderUseCase createOrderUseCase,
             GetOrderUseCase getOrderUseCase,
             GetUserOrdersUseCase getUserOrdersUseCase,
-            UpdateOrderStatusUseCase updateOrderStatusUseCase) {
+            UpdateOrderStatusUseCase updateOrderStatusUseCase,
+            SendNotificationUseCase sendNotificationUseCase,
+            UserRepositoryPort userRepositoryPort) {
         this.createOrderUseCase = createOrderUseCase;
         this.getOrderUseCase = getOrderUseCase;
         this.getUserOrdersUseCase = getUserOrdersUseCase;
         this.updateOrderStatusUseCase = updateOrderStatusUseCase;
+        this.sendNotificationUseCase = sendNotificationUseCase;
+        this.userRepositoryPort = userRepositoryPort;
     }
 
     @PostMapping
@@ -44,6 +53,12 @@ public class OrderController {
                 request.getCountry()
         );
         Order order = createOrderUseCase.createOrder(userId, command);
+
+        userRepositoryPort.findById(userId).ifPresent(user ->
+                sendNotificationUseCase.sendOrderConfirmation(
+                        userId, user.getEmail(), order.getOrderNumber(), order.getTotalAmount())
+        );
+
         return ResponseEntity.status(HttpStatus.CREATED).body(OrderResponse.fromDomain(order));
     }
 
@@ -67,6 +82,14 @@ public class OrderController {
             @PathVariable Long id,
             @RequestBody UpdateOrderStatusRequest request) {
         Order order = updateOrderStatusUseCase.updateOrderStatus(id, request.getStatus());
+
+        if (order.getStatus() == OrderStatus.SHIPPED) {
+            userRepositoryPort.findById(order.getUserId()).ifPresent(user ->
+                    sendNotificationUseCase.sendOrderShipped(
+                            order.getUserId(), user.getEmail(), order.getOrderNumber())
+            );
+        }
+
         return ResponseEntity.ok(OrderResponse.fromDomain(order));
     }
 }
