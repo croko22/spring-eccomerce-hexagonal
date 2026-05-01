@@ -62,6 +62,7 @@ public class ProductService implements CreateProductUseCase, GetProductUseCase, 
         existingProduct.setImageUrl(productToUpdate.getImageUrl());
         existingProduct.setSku(productToUpdate.getSku());
         existingProduct.setCategoryId(productToUpdate.getCategoryId());
+        existingProduct.setLowStockThreshold(productToUpdate.getLowStockThreshold());
         
         return productRepositoryPort.save(existingProduct);
     }

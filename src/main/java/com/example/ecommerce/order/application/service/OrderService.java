@@ -5,6 +5,7 @@ import com.example.ecommerce.cart.domain.model.CartItem;
 import com.example.ecommerce.order.application.port.in.*;
 import com.example.ecommerce.order.application.port.out.CartPort;
 import com.example.ecommerce.order.application.port.out.OrderRepositoryPort;
+import com.example.ecommerce.order.application.port.out.StockOperationPort;
 import com.example.ecommerce.order.domain.exception.DirectOrderPaidTransitionNotAllowedException;
 import com.example.ecommerce.order.domain.exception.OrderNotFoundException;
 import com.example.ecommerce.order.domain.model.Order;
@@ -18,10 +19,12 @@ public class OrderService implements CreateOrderUseCase, GetOrderUseCase, GetUse
 
     private final OrderRepositoryPort orderRepositoryPort;
     private final CartPort cartPort;
+    private final StockOperationPort stockOperationPort;
 
-    public OrderService(OrderRepositoryPort orderRepositoryPort, CartPort cartPort) {
+    public OrderService(OrderRepositoryPort orderRepositoryPort, CartPort cartPort, StockOperationPort stockOperationPort) {
         this.orderRepositoryPort = orderRepositoryPort;
         this.cartPort = cartPort;
+        this.stockOperationPort = stockOperationPort;
     }
 
     @Override
@@ -30,6 +33,15 @@ public class OrderService implements CreateOrderUseCase, GetOrderUseCase, GetUse
         
         if (cart.getItems().isEmpty()) {
             throw new IllegalArgumentException("Cannot create order from empty cart");
+        }
+
+        // Reserve stock for all items first (fail fast if insufficient)
+        for (CartItem item : cart.getItems()) {
+            stockOperationPort.reserveStock(
+                    item.getProduct().getId(),
+                    item.getQuantity(),
+                    "ORDER-RESERVE"
+            );
         }
 
         List<OrderItem> orderItems = cart.getItems().stream()
@@ -91,11 +103,32 @@ public class OrderService implements CreateOrderUseCase, GetOrderUseCase, GetUse
 
     @Override
     public Order updateOrderStatus(Long orderId, OrderStatus newStatus) {
-        if (newStatus == OrderStatus.PAID) {
-            throw new DirectOrderPaidTransitionNotAllowedException();
+        Order order = getOrderById(orderId);
+
+        // Handle stock operations on status transitions
+        if (newStatus == OrderStatus.CANCELLED) {
+            // Release reserved stock on cancellation
+            for (OrderItem item : order.getItems()) {
+                stockOperationPort.releaseStock(
+                        item.getProductId(),
+                        item.getQuantity(),
+                        "ORDER-CANCEL-" + orderId
+                );
+            }
+        } else if (newStatus == OrderStatus.PAID) {
+            // Decrement stock on payment
+            for (OrderItem item : order.getItems()) {
+                stockOperationPort.decrementStock(
+                        item.getProductId(),
+                        item.getQuantity(),
+                        "ORDER-PAID-" + orderId
+                );
+            }
+        } else {
+            // Only PAID and CANCELLED trigger stock operations
+            // Other transitions handled by Order.updateStatus()
         }
 
-        Order order = getOrderById(orderId);
         order.updateStatus(newStatus);
         return orderRepositoryPort.save(order);
     }

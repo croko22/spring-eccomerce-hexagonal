@@ -9,6 +9,7 @@ public class ProductRequest {
     private String imageUrl;
     private String sku;
     private Long categoryId;
+    private int lowStockThreshold;
 
     // Getters and Setters
     public String getName() {
@@ -65,5 +66,13 @@ public class ProductRequest {
 
     public void setCategoryId(Long categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public int getLowStockThreshold() {
+        return lowStockThreshold;
+    }
+
+    public void setLowStockThreshold(int lowStockThreshold) {
+        this.lowStockThreshold = lowStockThreshold;
     }
 }

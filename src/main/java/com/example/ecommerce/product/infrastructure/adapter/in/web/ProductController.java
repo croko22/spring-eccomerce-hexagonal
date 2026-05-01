@@ -6,7 +6,9 @@ import com.example.ecommerce.product.application.port.in.GetProductUseCase;
 import com.example.ecommerce.product.application.port.in.UpdateProductUseCase;
 import com.example.ecommerce.product.application.service.ProductService;
 import com.example.ecommerce.product.domain.model.Product;
+import com.example.ecommerce.product.domain.model.StockHistory;
 import com.example.ecommerce.product.infrastructure.adapter.in.web.dto.ProductRequest;
+import com.example.ecommerce.product.infrastructure.adapter.in.web.dto.StockAdjustRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
@@ -47,6 +49,7 @@ public class ProductController {
         Product product = new Product(null, productRequest.getName(), productRequest.getDescription(),
                 productRequest.getPrice(), productRequest.getStock(), productRequest.getImageUrl(),
                 productRequest.getSku(), productRequest.getCategoryId());
+        product.setLowStockThreshold(productRequest.getLowStockThreshold());
         return createProductUseCase.createProduct(product);
     }
 
@@ -76,6 +79,7 @@ public class ProductController {
         Product product = new Product(id, productRequest.getName(), productRequest.getDescription(),
                 productRequest.getPrice(), productRequest.getStock(), productRequest.getImageUrl(),
                 productRequest.getSku(), productRequest.getCategoryId());
+        product.setLowStockThreshold(productRequest.getLowStockThreshold());
         return updateProductUseCase.updateProduct(id, product);
     }
 
@@ -84,5 +88,30 @@ public class ProductController {
     @Operation(summary = "Delete a product", description = "Deletes a product by ID")
     public void deleteProduct(@PathVariable Long id) {
         deleteProductUseCase.deleteProduct(id);
+    }
+
+    // ========== Stock management endpoints ==========
+
+    @PostMapping("/{id}/stock/adjust")
+    @Operation(summary = "Adjust product stock", description = "Adjusts stock by a delta amount (positive or negative)")
+    public Product adjustStock(@PathVariable Long id, @RequestBody StockAdjustRequest request) {
+        productService.adjustStock(id, request.getQuantity(), request.getReason());
+        return getProductUseCase.getProductById(id);
+    }
+
+    @GetMapping("/{id}/stock/history")
+    @Operation(summary = "Get stock history", description = "Returns stock change history for a product")
+    public Page<StockHistory> getStockHistory(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return productService.getStockHistory(id, pageable);
+    }
+
+    @GetMapping("/low-stock")
+    @Operation(summary = "Get low stock products", description = "Returns all products flagged as low stock")
+    public List<Product> getLowStockProducts() {
+        return productService.getLowStockProducts();
     }
 }
