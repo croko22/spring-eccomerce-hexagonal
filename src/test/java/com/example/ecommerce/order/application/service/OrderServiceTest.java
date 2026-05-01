@@ -5,6 +5,7 @@ import com.example.ecommerce.cart.domain.model.CartItem;
 import com.example.ecommerce.order.application.port.in.CreateOrderUseCase;
 import com.example.ecommerce.order.application.port.out.CartPort;
 import com.example.ecommerce.order.application.port.out.OrderRepositoryPort;
+import com.example.ecommerce.order.application.port.out.StockOperationPort;
 import com.example.ecommerce.order.domain.exception.DirectOrderPaidTransitionNotAllowedException;
 import com.example.ecommerce.order.domain.exception.OrderNotFoundException;
 import com.example.ecommerce.order.domain.model.Order;
@@ -35,11 +36,14 @@ class OrderServiceTest {
     @Mock
     private CartPort cartPort;
 
+    @Mock
+    private StockOperationPort stockOperationPort;
+
     private OrderService orderService;
 
     @BeforeEach
     void setUp() {
-        orderService = new OrderService(orderRepositoryPort, cartPort);
+        orderService = new OrderService(orderRepositoryPort, cartPort, stockOperationPort);
     }
 
     @Test
@@ -78,6 +82,7 @@ class OrderServiceTest {
         assertNotNull(result);
         assertEquals(1L, result.getId());
         assertEquals("ORD-12345678", result.getOrderNumber());
+        verify(stockOperationPort).reserveStock(1L, 2, "ORDER-RESERVE");
         verify(cartPort).clearCart(1L);
     }
 
@@ -185,14 +190,31 @@ class OrderServiceTest {
         Order result = orderService.updateOrderStatus(1L, OrderStatus.CANCELLED);
 
         assertEquals(OrderStatus.CANCELLED, result.getStatus());
+        verify(stockOperationPort).releaseStock(1L, 2, "ORDER-CANCEL-1");
     }
 
     @Test
-    void shouldThrowExceptionWhenUpdatingOrderStatusDirectlyToPaid() {
-        assertThrows(DirectOrderPaidTransitionNotAllowedException.class,
-                () -> orderService.updateOrderStatus(1L, OrderStatus.PAID));
+    void shouldDecrementStockWhenOrderStatusPaid() {
+        OrderItem orderItem = new OrderItem(1L, 1L, "Product 1", 2, 10.0);
+        ShippingAddress address = new ShippingAddress("123 Main St", "City", "State", "12345", "Country");
+        Order order = new Order(
+                1L,
+                "ORD-12345678",
+                1L,
+                Arrays.asList(orderItem),
+                20.0,
+                OrderStatus.PENDING,
+                address,
+                null,
+                null
+        );
 
-        verify(orderRepositoryPort, never()).findById(any(Long.class));
-        verify(orderRepositoryPort, never()).save(any(Order.class));
+        when(orderRepositoryPort.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepositoryPort.save(any(Order.class))).thenReturn(order);
+
+        Order result = orderService.updateOrderStatus(1L, OrderStatus.PAID);
+
+        assertEquals(OrderStatus.PAID, result.getStatus());
+        verify(stockOperationPort).decrementStock(1L, 2, "ORDER-PAID-1");
     }
 }
